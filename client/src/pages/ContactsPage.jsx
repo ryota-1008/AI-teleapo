@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import CallModal from '../components/CallModal.jsx';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
 
@@ -10,6 +11,8 @@ export default function ContactsPage() {
   const [preview, setPreview] = useState(null); // 取込プレビュー
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [callContact, setCallContact] = useState(null); // 通話モーダル対象
+  const [activeScript, setActiveScript] = useState(null);
 
   async function load() {
     try {
@@ -23,6 +26,13 @@ export default function ContactsPage() {
   }
 
   useEffect(() => { load(); }, [filter]); // eslint-disable-line
+
+  // 使用中のトークスクリプトを取得(通話画面に表示する用)
+  useEffect(() => {
+    api.listScripts()
+      .then((list) => setActiveScript(list.find((s) => s.is_active) || null))
+      .catch(() => setActiveScript(null));
+  }, []);
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -125,13 +135,22 @@ export default function ContactsPage() {
                 </select>
               </td>
               <td>
-                <button className="btn small" disabled title="Twilio設定後に有効化 (Phase 1)">手動発信</button>
+                <button className="btn small" onClick={() => setCallContact(c)}>手動発信</button>
                 <button className="btn small" disabled title="ElevenLabs設定後に有効化 (Phase 2)">AI発信</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {callContact && (
+        <CallModal
+          contact={callContact}
+          script={activeScript}
+          onClose={() => setCallContact(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

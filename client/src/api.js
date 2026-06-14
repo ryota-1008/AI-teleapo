@@ -43,6 +43,18 @@ export const api = {
 
   listCalls: () => fetch(`${BASE}/api/calls`, { headers: headers() }).then(handle),
 
+  // 架電結果を記録(手動スマホ発信／ブラウザ発信どちらも)
+  createCall: (call) =>
+    fetch(`${BASE}/api/calls`, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(call),
+    }).then(handle),
+
+  // ブラウザ発信用Twilioトークン。未設定時は503 {error:'twilio_not_configured'}
+  manualToken: () =>
+    fetch(`${BASE}/api/calls/manual/token`, { method: 'POST', headers: headers() }).then(handle),
+
   listScripts: () => fetch(`${BASE}/api/scripts`, { headers: headers() }).then(handle),
 
   // id があれば更新、なければ新規作成

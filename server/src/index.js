@@ -5,6 +5,7 @@ import { auth } from './middleware/auth.js';
 import contactsRouter from './routes/contacts.js';
 import callsRouter from './routes/calls.js';
 import scriptsRouter from './routes/scripts.js';
+import twilioRouter from './routes/twilio.js';
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,9 @@ app.post('/webhooks/elevenlabs', express.raw({ type: '*/*' }), (req, res) => {
   console.log('[webhook] received (Phase 2 で処理を実装)');
   res.status(200).json({ received: true });
 });
+
+// --- Twilio が叩くルート(TwiML / status)も認証の外。専用パーサを内部で使う ---
+app.use('/', twilioRouter);
 
 // --- ここから先は JSON ボディ + 認証ミドルウェア ---
 app.use(express.json());
