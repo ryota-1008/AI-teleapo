@@ -1,0 +1,18 @@
+node_modules/
+*.log
+
+# ビルド成果物
+dist/
+client/dist/
+.env
+.env.local
+
+# SQLite データベース本体(WAL/SHM含む)
+*.db
+*.db-wal
+*.db-shm
+server/data/
+
+# OS
+.DS_Store
+Thumbs.db

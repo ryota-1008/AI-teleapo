@@ -1,0 +1,164 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --border: #e2e5ea;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --primary: #2563eb;
+  --warn: #d97706;
+  --error: #dc2626;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 12px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar nav { display: flex; gap: 4px; }
+
+.tab {
+  border: none;
+  background: transparent;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+}
+.tab.active { background: var(--primary); color: #fff; }
+
+main { padding: 24px; }
+.page { max-width: 1100px; margin: 0 auto; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.summary { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.chip {
+  background: #eef2ff;
+  color: #3730a3;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn:hover:not(:disabled) { border-color: var(--primary); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn.small { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
+
+select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.preview h3 { margin-top: 0; }
+.row { display: flex; gap: 8px; margin-top: 12px; }
+.invalid-list { max-height: 200px; overflow: auto; font-size: 13px; color: var(--muted); }
+.warn { color: var(--warn); }
+
+.error {
+  background: #fef2f2;
+  color: var(--error);
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.grid th, .grid td {
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.grid th { background: #f9fafb; color: var(--muted); font-weight: 600; }
+.grid tr:last-child td { border-bottom: none; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.empty { text-align: center; color: var(--muted); padding: 32px; }
+
+/* --- スクリプト設定画面 --- */
+.info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.info a { color: var(--primary); }
+
+.scripts-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.script-list { display: flex; flex-direction: column; gap: 6px; }
+.btn.block { width: 100%; }
+.script-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.script-item:hover { border-color: var(--primary); }
+.script-item.active { border-color: var(--primary); background: #eff6ff; }
+.script-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.script-edit { margin-bottom: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.field > span { font-size: 13px; color: var(--muted); }
+.field input, .field textarea {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  width: 100%;
+}
+.field textarea { resize: vertical; line-height: 1.6; }
+.checkbox { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 16px; cursor: pointer; }
+.muted { color: var(--muted); font-size: 13px; align-self: center; }
