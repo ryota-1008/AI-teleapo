@@ -1,12 +1,20 @@
 import { Router } from 'express';
 import { callsRepo, contactsRepo, VALID_STATUSES } from '../db.js';
 import { isTwilioConfigured, createVoiceToken } from '../lib/twilio.js';
+import { isElevenLabsConfigured, startAiCall } from '../lib/elevenlabs.js';
 
 const router = Router();
 
 // GET /api/calls — 架電履歴一覧
 router.get('/', (req, res) => {
   res.json(callsRepo.list());
+});
+
+// GET /api/calls/:id — 1件取得(AIモニターのポーリング用)
+router.get('/:id', (req, res) => {
+  const call = callsRepo.get(Number(req.params.id));
+  if (!call) return res.status(404).json({ error: 'not found' });
+  res.json(call);
 });
 
 // POST /api/calls — 架電レコード作成(結果記録)。
@@ -57,8 +65,31 @@ router.post('/manual/token', (req, res) => {
 });
 
 // POST /api/calls/ai — ElevenLabs 発信API呼び出し(Phase 2)
-router.post('/ai', (req, res) => {
-  res.status(501).json({ error: 'not implemented', note: 'ElevenLabs設定後に実装 (DESIGN Phase 2)' });
+router.post('/ai', async (req, res) => {
+  const { contact_id } = req.body;
+  if (!contact_id) return res.status(400).json({ error: 'contact_id は必須' });
+
+  const contact = contactsRepo.get(Number(contact_id));
+  if (!contact) return res.status(404).json({ error: 'contact not found' });
+
+  if (!isElevenLabsConfigured()) {
+    return res.status(503).json({ error: 'elevenlabs_not_configured', note: 'ElevenLabsの鍵が未設定です' });
+  }
+
+  try {
+    const data = await startAiCall(contact);
+    // conversation_id を控えて、後から来るwebhookと突合する (DESIGN 4)
+    const call = callsRepo.insert({
+      contact_id: contact.id,
+      mode: 'ai',
+      el_conversation_id: data.conversation_id || null,
+      twilio_call_sid: data.callSid || null,
+      started_at: new Date().toISOString(),
+    });
+    res.status(201).json({ call, elevenlabs: data });
+  } catch (e) {
+    res.status(e.status || 502).json({ error: 'ai_call_failed', detail: String(e.message) });
+  }
 });
 
 export default router;

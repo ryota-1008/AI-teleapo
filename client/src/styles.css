@@ -231,3 +231,11 @@ select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
 .turn.agent .turn-role { background: #f3e8ff; color: #6b21a8; }
 .turn.user .turn-role { background: #eef2ff; color: #3730a3; }
 .turn-msg { font-size: 14px; line-height: 1.6; }
+
+.small { font-size: 12px; }
+.spinner-dot {
+  display: inline-block; width: 8px; height: 8px; margin-right: 8px;
+  border-radius: 50%; background: var(--primary);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }

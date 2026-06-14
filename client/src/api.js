@@ -55,6 +55,17 @@ export const api = {
   manualToken: () =>
     fetch(`${BASE}/api/calls/manual/token`, { method: 'POST', headers: headers() }).then(handle),
 
+  // AI発信。未設定時は503 {error:'elevenlabs_not_configured'}
+  startAiCall: (contact_id) =>
+    fetch(`${BASE}/api/calls/ai`, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ contact_id }),
+    }).then(handle),
+
+  // 1件取得(AIモニターのポーリング用)
+  getCall: (id) => fetch(`${BASE}/api/calls/${id}`, { headers: headers() }).then(handle),
+
   listScripts: () => fetch(`${BASE}/api/scripts`, { headers: headers() }).then(handle),
 
   // id があれば更新、なければ新規作成

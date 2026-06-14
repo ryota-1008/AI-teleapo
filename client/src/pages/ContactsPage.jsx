@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import CallModal from '../components/CallModal.jsx';
+import AiCallModal from '../components/AiCallModal.jsx';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
 
@@ -11,7 +12,8 @@ export default function ContactsPage() {
   const [preview, setPreview] = useState(null); // 取込プレビュー
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [callContact, setCallContact] = useState(null); // 通話モーダル対象
+  const [callContact, setCallContact] = useState(null); // 手動通話モーダル対象
+  const [aiContact, setAiContact] = useState(null);      // AI発信モーダル対象
   const [activeScript, setActiveScript] = useState(null);
 
   async function load() {
@@ -136,7 +138,7 @@ export default function ContactsPage() {
               </td>
               <td>
                 <button className="btn small" onClick={() => setCallContact(c)}>手動発信</button>
-                <button className="btn small" disabled title="ElevenLabs設定後に有効化 (Phase 2)">AI発信</button>
+                <button className="btn small" onClick={() => setAiContact(c)}>AI発信</button>
               </td>
             </tr>
           ))}
@@ -148,6 +150,14 @@ export default function ContactsPage() {
           contact={callContact}
           script={activeScript}
           onClose={() => setCallContact(null)}
+          onSaved={load}
+        />
+      )}
+
+      {aiContact && (
+        <AiCallModal
+          contact={aiContact}
+          onClose={() => setAiContact(null)}
           onSaved={load}
         />
       )}

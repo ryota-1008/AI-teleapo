@@ -112,6 +112,10 @@ export const callsRepo = {
     return db.prepare('SELECT * FROM calls WHERE id = ?').get(id);
   },
 
+  getByConversationId(conversationId) {
+    return db.prepare('SELECT * FROM calls WHERE el_conversation_id = ?').get(conversationId);
+  },
+
   insert(call) {
     const r = db
       .prepare(
