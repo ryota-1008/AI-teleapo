@@ -58,6 +58,7 @@ export default function HistoryPage() {
           {RESULTS.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
         <button className="btn small" onClick={load}>更新</button>
+        <button className="btn small" onClick={() => api.exportCalls().catch((e) => setError(e.message))} disabled={calls.length === 0}>エクスポート</button>
         <div className="summary">
           <span className="chip">総数: {stats.total}</span>
           <span className="chip">手動: {stats.manual}</span>

@@ -3,6 +3,7 @@ import multer from 'multer';
 import * as XLSX from 'xlsx';
 import { contactsRepo, VALID_STATUSES } from '../db.js';
 import { normalizePhone } from '../lib/phone.js';
+import { toXlsxBuffer, sendXlsx } from '../lib/xlsxExport.js';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -94,6 +95,21 @@ router.get('/', (req, res) => {
 // GET /api/contacts/summary — ステータス別件数
 router.get('/summary', (req, res) => {
   res.json(contactsRepo.statusSummary());
+});
+
+// GET /api/contacts/export — 連絡先一覧をExcel出力
+router.get('/export', (req, res) => {
+  const rows = contactsRepo.list({ status: req.query.status }).map((c) => ({
+    会社名: c.company || '',
+    担当者: c.person || '',
+    電話番号: c.phone || '',
+    ステータス: c.status || '',
+    再架電予定: c.next_call_at || '',
+    メモ: c.memo || '',
+    登録日時: c.created_at || '',
+  }));
+  const date = new Date().toISOString().slice(0, 10);
+  sendXlsx(res, toXlsxBuffer(rows, '連絡先'), `contacts_${date}.xlsx`);
 });
 
 // PATCH /api/contacts/:id — ステータス・メモ等の更新

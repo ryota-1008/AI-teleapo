@@ -2,12 +2,34 @@ import { Router } from 'express';
 import { callsRepo, contactsRepo, VALID_STATUSES } from '../db.js';
 import { isTwilioConfigured, createVoiceToken } from '../lib/twilio.js';
 import { isElevenLabsConfigured, startAiCall } from '../lib/elevenlabs.js';
+import { toXlsxBuffer, sendXlsx } from '../lib/xlsxExport.js';
 
 const router = Router();
 
 // GET /api/calls — 架電履歴一覧
 router.get('/', (req, res) => {
   res.json(callsRepo.list());
+});
+
+// GET /api/calls/export — 架電履歴をExcel出力 (/:id より前に置く)
+router.get('/export', (req, res) => {
+  const rows = callsRepo.list().map((c) => {
+    let summary = '';
+    try { summary = c.analysis ? (JSON.parse(c.analysis).transcript_summary || '') : ''; } catch { /* noop */ }
+    return {
+      日時: c.started_at || '',
+      会社名: c.company || '',
+      担当者: c.person || '',
+      電話番号: c.phone || '',
+      モード: c.mode === 'ai' ? 'AI' : '手動',
+      結果: c.result || '',
+      メモ: c.note || '',
+      AI要約: summary,
+      終了日時: c.ended_at || '',
+    };
+  });
+  const date = new Date().toISOString().slice(0, 10);
+  sendXlsx(res, toXlsxBuffer(rows, '架電履歴'), `calls_${date}.xlsx`);
 });
 
 // GET /api/calls/:id — 1件取得(AIモニターのポーリング用)

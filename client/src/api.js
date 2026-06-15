@@ -15,6 +15,23 @@ async function handle(res) {
   return res.json();
 }
 
+// Excelなどのファイルを取得してブラウザのダウンロードを起動する
+async function download(path, fallbackName) {
+  const res = await fetch(`${BASE}${path}`, { headers: headers() });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  const cd = res.headers.get('Content-Disposition') || '';
+  const m = cd.match(/filename="?([^"]+)"?/);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = m ? m[1] : fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   listContacts: (status) =>
     fetch(`${BASE}/api/contacts${status ? `?status=${encodeURIComponent(status)}` : ''}`, {
@@ -75,4 +92,8 @@ export const api = {
       headers: headers({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(script),
     }).then(handle),
+
+  // Excelエクスポート(ブラウザダウンロード)
+  exportContacts: () => download('/api/contacts/export', 'contacts.xlsx'),
+  exportCalls: () => download('/api/calls/export', 'calls.xlsx'),
 };

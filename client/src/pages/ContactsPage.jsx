@@ -77,6 +77,9 @@ export default function ContactsPage() {
           Excel取込
           <input type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} disabled={busy} />
         </label>
+        <button className="btn" onClick={() => api.exportContacts().catch((e) => setError(e.message))} disabled={contacts.length === 0}>
+          エクスポート
+        </button>
         <select value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">すべて</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
