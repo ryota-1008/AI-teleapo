@@ -70,6 +70,8 @@ main { padding: 24px; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn.small { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
+.btn.danger-text { color: var(--error); }
+.btn.danger-text:hover:not(:disabled) { border-color: var(--error); }
 
 select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import CallModal from '../components/CallModal.jsx';
 import AiCallModal from '../components/AiCallModal.jsx';
+import ContactEditModal from '../components/ContactEditModal.jsx';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
 
@@ -14,6 +15,7 @@ export default function ContactsPage() {
   const [error, setError] = useState('');
   const [callContact, setCallContact] = useState(null); // 手動通話モーダル対象
   const [aiContact, setAiContact] = useState(null);      // AI発信モーダル対象
+  const [editTarget, setEditTarget] = useState(undefined); // undefined=閉/null=新規/obj=編集
   const [activeScript, setActiveScript] = useState(null);
 
   async function load() {
@@ -70,6 +72,16 @@ export default function ContactsPage() {
     await load();
   }
 
+  async function deleteContact(c) {
+    if (!window.confirm(`「${c.company || c.phone}」を削除しますか？`)) return;
+    try {
+      await api.deleteContact(c.id);
+      await load();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   return (
     <div className="page">
       <div className="toolbar">
@@ -77,6 +89,7 @@ export default function ContactsPage() {
           Excel取込
           <input type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} disabled={busy} />
         </label>
+        <button className="btn" onClick={() => setEditTarget(null)}>＋ 手動追加</button>
         <button className="btn" onClick={() => api.exportContacts().catch((e) => setError(e.message))} disabled={contacts.length === 0}>
           エクスポート
         </button>
@@ -97,7 +110,9 @@ export default function ContactsPage() {
         <div className="preview card">
           <h3>取込プレビュー</h3>
           <p>
-            有効 <b>{preview.validCount}</b> 件 / 無効 <b className="warn">{preview.invalidCount}</b> 件
+            取込 <b>{preview.validCount}</b> 件
+            {preview.duplicateCount > 0 && <> / 重複スキップ <b className="warn">{preview.duplicateCount}</b> 件</>}
+            {preview.invalidCount > 0 && <> / 無効 <b className="warn">{preview.invalidCount}</b> 件</>}
           </p>
           {preview.invalidCount > 0 && (
             <details>
@@ -121,12 +136,12 @@ export default function ContactsPage() {
       <table className="grid">
         <thead>
           <tr>
-            <th>会社名</th><th>担当者</th><th>電話番号</th><th>メモ</th><th>ステータス</th><th>発信</th>
+            <th>会社名</th><th>担当者</th><th>電話番号</th><th>メモ</th><th>ステータス</th><th>発信</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
           {contacts.length === 0 && (
-            <tr><td colSpan={6} className="empty">リストが空です。Excelを取り込んでください。</td></tr>
+            <tr><td colSpan={7} className="empty">リストが空です。Excel取込か「手動追加」で登録してください。</td></tr>
           )}
           {contacts.map((c) => (
             <tr key={c.id}>
@@ -142,6 +157,10 @@ export default function ContactsPage() {
               <td>
                 <button className="btn small" onClick={() => setCallContact(c)}>手動発信</button>
                 <button className="btn small" onClick={() => setAiContact(c)}>AI発信</button>
+              </td>
+              <td className="nowrap">
+                <button className="btn small" onClick={() => setEditTarget(c)}>編集</button>
+                <button className="btn small danger-text" onClick={() => deleteContact(c)}>削除</button>
               </td>
             </tr>
           ))}
@@ -161,6 +180,14 @@ export default function ContactsPage() {
         <AiCallModal
           contact={aiContact}
           onClose={() => setAiContact(null)}
+          onSaved={load}
+        />
+      )}
+
+      {editTarget !== undefined && (
+        <ContactEditModal
+          contact={editTarget}
+          onClose={() => setEditTarget(undefined)}
           onSaved={load}
         />
       )}

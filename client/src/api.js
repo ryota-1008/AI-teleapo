@@ -47,6 +47,21 @@ export const api = {
       body: JSON.stringify(fields),
     }).then(handle),
 
+  createContact: (fields) =>
+    fetch(`${BASE}/api/contacts`, {
+      method: 'POST',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(fields),
+    }).then(handle),
+
+  deleteContact: async (id) => {
+    const res = await fetch(`${BASE}/api/contacts/${id}`, { method: 'DELETE', headers: headers() });
+    if (!res.ok && res.status !== 204) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+  },
+
   // commit=false: プレビュー / true: 確定保存
   importExcel: (file, commit) => {
     const fd = new FormData();

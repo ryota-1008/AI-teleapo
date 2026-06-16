@@ -63,6 +63,26 @@ export const contactsRepo = {
     return db.prepare('SELECT * FROM contacts WHERE id = ?').get(id);
   },
 
+  create({ company, person, phone, memo }) {
+    const r = db
+      .prepare('INSERT INTO contacts (company, person, phone, memo) VALUES (?, ?, ?, ?)')
+      .run(company ?? null, person ?? null, phone, memo ?? null);
+    return contactsRepo.get(r.lastInsertRowid);
+  },
+
+  remove(id) {
+    db.prepare('DELETE FROM contacts WHERE id = ?').run(id);
+  },
+
+  callCount(id) {
+    return db.prepare('SELECT COUNT(*) AS c FROM calls WHERE contact_id = ?').get(id).c;
+  },
+
+  // 既存の電話番号一覧(取込時の重複スキップ用)
+  existingPhones() {
+    return db.prepare('SELECT phone FROM contacts').all().map((r) => r.phone);
+  },
+
   insertMany(rows) {
     // node:sqlite には better-sqlite3 の .transaction() が無いため手動で囲む
     const stmt = db.prepare(
