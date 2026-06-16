@@ -6,14 +6,14 @@ import { normalizePhone } from '../lib/phone.js';
 import { toXlsxBuffer, sendXlsx } from '../lib/xlsxExport.js';
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } });
 
-// ヘッダ名のゆらぎを吸収するためのエイリアス
+// ヘッダ名のゆらぎを吸収するためのエイリアス（実データの法人リスト形式にも対応）
 const COLUMN_ALIASES = {
-  company: ['会社名', '会社', '企業名', 'company'],
-  person: ['担当者名', '担当者', '担当', '氏名', '名前', 'person', 'name'],
-  phone: ['電話番号', '電話', 'tel', 'phone', 'phone_number', '番号'],
-  memo: ['メモ', '備考', 'note', 'memo'],
+  company: ['会社名', '会社', '企業名', '法人名称', '法人名', '法人', '団体名', '組織名', '名称', 'company'],
+  person: ['担当者名', '担当者', '担当', '氏名', '名前', '代表者名', '代表者', '代表', 'person', 'name'],
+  phone: ['電話番号', '電話', 'tel', 'phone', 'phone_number'],
+  memo: ['メモ', '備考', '法人サマリー', 'サマリー', '概要', 'note', 'memo'],
 };
 
 function detectKey(header) {
@@ -88,9 +88,12 @@ router.post('/import', upload.single('file'), (req, res) => {
 
   const valid = [];
   const invalid = [];
+  let noPhone = 0; // 電話番号が空の行（法人リストでは多数。無効ではなく単にスキップ）
   for (const row of records) {
-    if (!row.phone && !row.company && !row.person) continue; // 空行スキップ
-    const n = normalizePhone(row.phone);
+    if (!row.phone && !row.company && !row.person) continue; // 完全な空行スキップ
+    const phoneRaw = String(row.phone ?? '').trim();
+    if (!phoneRaw) { noPhone++; continue; } // 電話番号なし → スキップ
+    const n = normalizePhone(phoneRaw);
     if (n.ok) {
       valid.push({ company: row.company || null, person: row.person || null, phone: n.e164, memo: row.memo || null });
     } else {
@@ -118,8 +121,9 @@ router.post('/import', upload.single('file'), (req, res) => {
       phoneMissing: mapping.phone === null || mapping.phone === undefined,
       validCount: fresh.length,
       duplicateCount: duplicates.length,
+      noPhoneCount: noPhone,
       invalidCount: invalid.length,
-      invalid,
+      invalid: invalid.slice(0, 50), // 大量行対策: 詳細は先頭50件だけ返す
     });
   }
 
@@ -127,7 +131,7 @@ router.post('/import', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: '電話番号の列が指定されていません' });
   }
   const inserted = contactsRepo.insertMany(fresh);
-  res.json({ preview: false, inserted, duplicateSkipped: duplicates.length, invalidSkipped: invalid.length });
+  res.json({ preview: false, inserted, duplicateSkipped: duplicates.length, noPhoneSkipped: noPhone, invalidSkipped: invalid.length });
 });
 
 // GET /api/contacts?status=未架電

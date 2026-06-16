@@ -170,6 +170,7 @@ export default function ContactsPage() {
 
           <p>
             取込 <b>{preview.validCount}</b> 件
+            {preview.noPhoneCount > 0 && <> / 電話なし <b className="warn">{preview.noPhoneCount}</b> 件</>}
             {preview.duplicateCount > 0 && <> / 重複スキップ <b className="warn">{preview.duplicateCount}</b> 件</>}
             {preview.invalidCount > 0 && <> / 無効 <b className="warn">{preview.invalidCount}</b> 件</>}
           </p>
