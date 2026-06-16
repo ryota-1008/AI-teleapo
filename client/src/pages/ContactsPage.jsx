@@ -57,9 +57,24 @@ export default function ContactsPage() {
   async function confirmImport() {
     setBusy(true);
     try {
-      await api.importExcel(preview.file, true);
+      await api.importExcel(preview.file, true, preview.mapping);
       setPreview(null);
       await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 列マッピングを変更して、プレビューを再計算する
+  async function remap(field, value) {
+    const idx = value === '' ? null : Number(value);
+    const newMapping = { ...preview.mapping, [field]: idx };
+    setBusy(true);
+    try {
+      const result = await api.importExcel(preview.file, false, newMapping);
+      setPreview({ file: preview.file, ...result });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -108,7 +123,51 @@ export default function ContactsPage() {
 
       {preview && (
         <div className="preview card">
-          <h3>取込プレビュー</h3>
+          <h3>取込プレビュー — 列の対応を確認</h3>
+
+          {/* 列マッピング編集 */}
+          <div className="mapping-grid">
+            {[
+              ['company', '会社名'],
+              ['person', '担当者'],
+              ['phone', '電話番号 *'],
+              ['memo', 'メモ'],
+            ].map(([field, label]) => (
+              <label key={field} className="map-field">
+                <span>{label}</span>
+                <select
+                  value={preview.mapping[field] ?? ''}
+                  onChange={(e) => remap(field, e.target.value)}
+                  disabled={busy}
+                  className={field === 'phone' && preview.phoneMissing ? 'map-missing' : ''}
+                >
+                  <option value="">（なし）</option>
+                  {preview.headers.map((h, i) => (
+                    <option key={i} value={i}>{h || `列${i + 1}`}</option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+
+          {/* サンプル表示(先頭数行) */}
+          {preview.sampleData?.length > 0 && (
+            <div className="sample-wrap">
+              <table className="sample-table">
+                <thead>
+                  <tr>{preview.headers.map((h, i) => <th key={i}>{h || `列${i + 1}`}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {preview.sampleData.map((r, ri) => (
+                    <tr key={ri}>{r.map((c, ci) => <td key={ci}>{c}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {preview.phoneMissing && <div className="error">電話番号の列を選んでください（必須）。</div>}
+
           <p>
             取込 <b>{preview.validCount}</b> 件
             {preview.duplicateCount > 0 && <> / 重複スキップ <b className="warn">{preview.duplicateCount}</b> 件</>}
@@ -125,7 +184,7 @@ export default function ContactsPage() {
             </details>
           )}
           <div className="row">
-            <button className="btn primary" onClick={confirmImport} disabled={busy || preview.validCount === 0}>
+            <button className="btn primary" onClick={confirmImport} disabled={busy || preview.phoneMissing || preview.validCount === 0}>
               {preview.validCount} 件を取り込む
             </button>
             <button className="btn" onClick={() => setPreview(null)} disabled={busy}>キャンセル</button>

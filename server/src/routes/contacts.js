@@ -24,55 +24,75 @@ function detectKey(header) {
   return null;
 }
 
-// Excel/CSV をパースして {company, person, phone(raw), memo} の配列に変換
+// Excel/CSV を「ヘッダー + 生の行配列」として読む。マッピングは別で行う。
 function parseSheet(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer', raw: false });
   const sheet = wb.Sheets[wb.SheetNames[0]];
   // 先頭0落ちを避けるため defval を文字列で受ける
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { headers: [], rows: [] };
+  const headers = (rows[0] || []).map((h) => String(h ?? '').trim());
+  return { headers, rows: rows.slice(1) };
+}
 
-  const headerRow = rows[0];
-  const mapping = {};
-  headerRow.forEach((h, idx) => {
+// ヘッダーから各項目の列を自動推定する（別名の完全一致 → ダメなら先頭固定）
+function suggestMapping(headers) {
+  const mapping = { company: null, person: null, phone: null, memo: null };
+  headers.forEach((h, idx) => {
     const key = detectKey(h);
-    if (key) mapping[key] = idx;
+    if (key && mapping[key] === null) mapping[key] = idx;
   });
-
-  // ヘッダが認識できない場合は列固定(会社名/担当者名/電話番号/メモ)にフォールバック
-  if (mapping.phone === undefined) {
-    return rows.slice(1).map((r) => ({
-      company: r[0], person: r[1], phone: r[2], memo: r[3],
-    }));
+  if (Object.values(mapping).every((v) => v === null)) {
+    if (headers.length > 0) mapping.company = 0;
+    if (headers.length > 1) mapping.person = 1;
+    if (headers.length > 2) mapping.phone = 2;
+    if (headers.length > 3) mapping.memo = 3;
   }
+  return mapping;
+}
 
-  return rows.slice(1).map((r) => ({
-    company: mapping.company !== undefined ? r[mapping.company] : null,
-    person: mapping.person !== undefined ? r[mapping.person] : null,
-    phone: r[mapping.phone],
-    memo: mapping.memo !== undefined ? r[mapping.memo] : null,
+// マッピング(項目→列index)を行に適用して {company,person,phone,memo} を作る
+function applyMapping(rows, mapping) {
+  const at = (row, idx) => (idx === null || idx === undefined ? null : (row[idx] ?? null));
+  return rows.map((r) => ({
+    company: at(r, mapping.company),
+    person: at(r, mapping.person),
+    phone: at(r, mapping.phone),
+    memo: at(r, mapping.memo),
   }));
 }
 
 // POST /api/contacts/import — Excelアップロード(プレビュー or 確定)
-// ?commit=true で実際にDB保存。未指定なら正規化結果のプレビューのみ返す (DESIGN 14-6)
+// body.mapping(JSON)で列マッピングを指定可。未指定なら自動推定 (DESIGN 14-6)
 router.post('/import', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'file がありません' });
 
-  let raw;
+  let parsed;
   try {
-    raw = parseSheet(req.file.buffer);
+    parsed = parseSheet(req.file.buffer);
   } catch (e) {
     return res.status(400).json({ error: 'Excelの解析に失敗しました', detail: String(e.message) });
   }
+  const { headers, rows } = parsed;
+  if (headers.length === 0) return res.status(400).json({ error: 'ヘッダー行が見つかりません' });
+
+  let mapping;
+  if (req.body.mapping) {
+    try { mapping = JSON.parse(req.body.mapping); }
+    catch { return res.status(400).json({ error: 'mappingのJSONが不正です' }); }
+  } else {
+    mapping = suggestMapping(headers);
+  }
+
+  const records = applyMapping(rows, mapping);
 
   const valid = [];
   const invalid = [];
-  for (const row of raw) {
+  for (const row of records) {
     if (!row.phone && !row.company && !row.person) continue; // 空行スキップ
     const n = normalizePhone(row.phone);
     if (n.ok) {
-      valid.push({ company: row.company || null, person: row.person || null, phone: n.e164, memo: row.memo || null, rawPhone: n.raw });
+      valid.push({ company: row.company || null, person: row.person || null, phone: n.e164, memo: row.memo || null });
     } else {
       invalid.push({ company: row.company || null, person: row.person || null, rawPhone: n.raw, reason: n.reason });
     }
@@ -84,27 +104,30 @@ router.post('/import', upload.single('file'), (req, res) => {
   const fresh = [];
   const duplicates = [];
   for (const v of valid) {
-    if (existing.has(v.phone) || seen.has(v.phone)) {
-      duplicates.push(v);
-    } else {
-      seen.add(v.phone);
-      fresh.push(v);
-    }
+    if (existing.has(v.phone) || seen.has(v.phone)) duplicates.push(v);
+    else { seen.add(v.phone); fresh.push(v); }
   }
 
   const commit = req.query.commit === 'true';
   if (!commit) {
     return res.json({
       preview: true,
+      headers,
+      sampleData: rows.slice(0, 5).map((r) => headers.map((_, i) => String(r[i] ?? ''))),
+      mapping,
+      phoneMissing: mapping.phone === null || mapping.phone === undefined,
       validCount: fresh.length,
       duplicateCount: duplicates.length,
       invalidCount: invalid.length,
-      valid: fresh, duplicates, invalid,
+      invalid,
     });
   }
 
-  const inserted = contactsRepo.insertMany(fresh.map(({ rawPhone, ...rest }) => rest));
-  res.json({ preview: false, inserted, duplicateSkipped: duplicates.length, invalidSkipped: invalid.length, invalid });
+  if (mapping.phone === null || mapping.phone === undefined) {
+    return res.status(400).json({ error: '電話番号の列が指定されていません' });
+  }
+  const inserted = contactsRepo.insertMany(fresh);
+  res.json({ preview: false, inserted, duplicateSkipped: duplicates.length, invalidSkipped: invalid.length });
 });
 
 // GET /api/contacts?status=未架電

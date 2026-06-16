@@ -65,10 +65,11 @@ export const api = {
     }
   },
 
-  // commit=false: プレビュー / true: 確定保存
-  importExcel: (file, commit) => {
+  // commit=false: プレビュー / true: 確定保存。mapping={company,person,phone,memo: 列index|null}
+  importExcel: (file, commit, mapping) => {
     const fd = new FormData();
     fd.append('file', file);
+    if (mapping) fd.append('mapping', JSON.stringify(mapping));
     return fetch(`${BASE}/api/contacts/import?commit=${commit}`, {
       method: 'POST',
       headers: headers(),
