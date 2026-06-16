@@ -46,6 +46,11 @@ db.exec(`
     body TEXT,
     is_active INTEGER DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
 `);
 
 export const VALID_STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
@@ -136,6 +141,13 @@ export const callsRepo = {
     return db.prepare('SELECT * FROM calls WHERE el_conversation_id = ?').get(conversationId);
   },
 
+  // 当日(UTC)の架電件数。started_at は ISO/UTC 文字列なので前方一致で数える
+  countToday(todayPrefix) {
+    return db
+      .prepare("SELECT COUNT(*) AS c FROM calls WHERE substr(started_at,1,10) = ?")
+      .get(todayPrefix).c;
+  },
+
   insert(call) {
     const r = db
       .prepare(
@@ -191,6 +203,21 @@ export const scriptsRepo = {
       .run(title, body, is_active ? 1 : 0);
     if (is_active) db.prepare('UPDATE scripts SET is_active = 0 WHERE id != ?').run(r.lastInsertRowid);
     return db.prepare('SELECT * FROM scripts WHERE id = ?').get(r.lastInsertRowid);
+  },
+};
+
+// ---- settings (キルスイッチ・架電上限など key-value) ----
+export const settingsRepo = {
+  get(key, fallback = null) {
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+    return row ? row.value : fallback;
+  },
+
+  set(key, value) {
+    db.prepare(
+      `INSERT INTO settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).run(key, String(value));
   },
 };
 

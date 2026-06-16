@@ -35,9 +35,9 @@ export default function CallModal({ contact, script, onClose, onSaved }) {
         // 503 twilio_not_configured もここに来る
         setTwilioReady(false);
         setTwilioMsg(
-          e.message === 'twilio_not_configured'
+          e.code === 'twilio_not_configured'
             ? 'Twilio未設定: スマホで発信し、結果だけ記録できます。'
-            : `ブラウザ発信は利用できません (${e.message})。スマホ発信＋結果記録は可能です。`
+            : `ブラウザ発信は利用できません（${e.message}）。スマホ発信＋結果記録は可能です。`
         );
       }
     })();

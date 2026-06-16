@@ -10,7 +10,10 @@ function headers(extra = {}) {
 async function handle(res) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+    // note(日本語の説明)があれば優先。無ければ error コード。
+    const err = new Error(body.note || body.error || `HTTP ${res.status}`);
+    err.code = body.error;
+    throw err;
   }
   return res.json();
 }
@@ -111,4 +114,12 @@ export const api = {
   // Excelエクスポート(ブラウザダウンロード)
   exportContacts: () => download('/api/contacts/export', 'contacts.xlsx'),
   exportCalls: () => download('/api/calls/export', 'calls.xlsx'),
+
+  getSettings: () => fetch(`${BASE}/api/settings`, { headers: headers() }).then(handle),
+  saveSettings: (s) =>
+    fetch(`${BASE}/api/settings`, {
+      method: 'PUT',
+      headers: headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(s),
+    }).then(handle),
 };

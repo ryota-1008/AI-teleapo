@@ -34,12 +34,12 @@ export default function AiCallModal({ contact, onClose, onSaved }) {
         }, 4000);
       } catch (e) {
         if (stopped) return;
-        if (e.message === 'elevenlabs_not_configured') {
+        if (e.code === 'elevenlabs_not_configured') {
           setPhase('not_configured');
           setMessage('ElevenLabs未設定です。AIモードは鍵を設定すると利用できます（Phase 2）。');
         } else {
           setPhase('error');
-          setMessage(`発信に失敗しました: ${e.message}`);
+          setMessage(`発信できませんでした: ${e.message}`);
         }
       }
     })();

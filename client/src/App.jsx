@@ -2,11 +2,13 @@ import { useState } from 'react';
 import ContactsPage from './pages/ContactsPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 import ScriptsPage from './pages/ScriptsPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 
 const TABS = [
   { key: 'contacts', label: 'リスト' },
   { key: 'history', label: '履歴' },
   { key: 'scripts', label: 'スクリプト' },
+  { key: 'settings', label: '設定' },
 ];
 
 export default function App() {
@@ -32,6 +34,7 @@ export default function App() {
         {tab === 'contacts' && <ContactsPage />}
         {tab === 'history' && <HistoryPage />}
         {tab === 'scripts' && <ScriptsPage />}
+        {tab === 'settings' && <SettingsPage />}
       </main>
     </div>
   );

@@ -5,6 +5,7 @@ import { auth } from './middleware/auth.js';
 import contactsRouter from './routes/contacts.js';
 import callsRouter from './routes/calls.js';
 import scriptsRouter from './routes/scripts.js';
+import settingsRouter from './routes/settings.js';
 import twilioRouter from './routes/twilio.js';
 import { verifyWebhook } from './lib/elevenlabs.js';
 import { callsRepo, contactsRepo } from './db.js';
@@ -81,6 +82,7 @@ app.use('/api', auth);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/calls', callsRouter);
 app.use('/api/scripts', scriptsRouter);
+app.use('/api/settings', settingsRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

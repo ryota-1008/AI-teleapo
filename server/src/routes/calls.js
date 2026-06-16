@@ -3,6 +3,7 @@ import { callsRepo, contactsRepo, VALID_STATUSES } from '../db.js';
 import { isTwilioConfigured, createVoiceToken } from '../lib/twilio.js';
 import { isElevenLabsConfigured, startAiCall } from '../lib/elevenlabs.js';
 import { toXlsxBuffer, sendXlsx } from '../lib/xlsxExport.js';
+import { outboundGuard } from './settings.js';
 
 const router = Router();
 
@@ -74,6 +75,8 @@ router.patch('/:id', (req, res) => {
 
 // POST /api/calls/manual/token — Twilio Voice JS SDK 用アクセストークン発行(Phase 1)
 router.post('/manual/token', (req, res) => {
+  const guard = outboundGuard();
+  if (!guard.ok) return res.status(guard.status).json({ error: guard.error, note: guard.note });
   if (!isTwilioConfigured()) {
     // 鍵未設定: フロントはこれを見て「スマホ発信＋結果記録のみ」モードに切り替える
     return res.status(503).json({ error: 'twilio_not_configured', note: 'Twilioの鍵が未設定です' });
@@ -93,6 +96,9 @@ router.post('/ai', async (req, res) => {
 
   const contact = contactsRepo.get(Number(contact_id));
   if (!contact) return res.status(404).json({ error: 'contact not found' });
+
+  const guard = outboundGuard();
+  if (!guard.ok) return res.status(guard.status).json({ error: guard.error, note: guard.note });
 
   if (!isElevenLabsConfigured()) {
     return res.status(503).json({ error: 'elevenlabs_not_configured', note: 'ElevenLabsの鍵が未設定です' });

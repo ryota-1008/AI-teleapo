@@ -241,3 +241,7 @@ select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px;
   animation: pulse 1s ease-in-out infinite;
 }
 @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* --- 設定画面 --- */
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.setting-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
