@@ -1,0 +1,60 @@
+// AIテレアポツール DBスキーマ (Supabase / PostgreSQL)
+// 既存のSQLite 3テーブル + settings をそのまま移植。@map で列名はスネークケースを維持。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")  // 実行時はプール接続(pgbouncer)を使う
+  directUrl = env("DIRECT_URL")    // マイグレーションは直結を使う
+}
+
+model Contact {
+  id         Int       @id @default(autoincrement())
+  company    String?
+  person     String?
+  phone      String // E.164形式(+81...)に正規化して保存
+  memo       String?
+  status     String    @default("未架電") // 未架電/不在/アポ獲得/NG/再架電
+  nextCallAt DateTime? @map("next_call_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  calls      Call[]
+
+  @@map("contacts")
+}
+
+model Call {
+  id               Int       @id @default(autoincrement())
+  contactId        Int?      @map("contact_id")
+  contact          Contact?  @relation(fields: [contactId], references: [id])
+  mode             String // 'ai' or 'manual'
+  result           String?
+  note             String?
+  transcript       String? // AIモードの会話ログ(JSON文字列)
+  analysis         String? // ElevenLabsの評価結果(JSON文字列)
+  elConversationId String?   @map("el_conversation_id")
+  twilioCallSid    String?   @map("twilio_call_sid")
+  startedAt        DateTime? @map("started_at")
+  endedAt          DateTime? @map("ended_at")
+
+  @@index([elConversationId])
+  @@map("calls")
+}
+
+model Script {
+  id       Int     @id @default(autoincrement())
+  title    String?
+  body     String?
+  isActive Boolean @default(false) @map("is_active")
+
+  @@map("scripts")
+}
+
+model Setting {
+  key   String  @id
+  value String?
+
+  @@map("settings")
+}
