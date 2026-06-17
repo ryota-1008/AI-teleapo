@@ -2,19 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
-      "cwd": "server",
-      "port": 4000,
-      "autoPort": false
-    },
-    {
-      "name": "client",
+      "name": "app",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "client",
-      "port": 5173,
+      "port": 4000,
       "autoPort": false
     }
   ]
