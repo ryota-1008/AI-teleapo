@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/apiClient';
 import { suggestMapping, analyzeRows } from '@/lib/importMapping';
 import CallModal from '@/components/CallModal';
@@ -7,6 +7,7 @@ import AiCallModal from '@/components/AiCallModal';
 import ContactEditModal from '@/components/ContactEditModal';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
+const STATUS_CLASS = { '未架電': 's-new', '不在': 's-absent', 'アポ獲得': 's-won', NG: 's-ng', '再架電': 's-recall' };
 const CHUNK_SIZE = 500; // 1回の送信件数（Vercelの4.5MB制限を回避）
 
 export default function ContactsPage() {
@@ -22,6 +23,31 @@ export default function ContactsPage() {
   const [activeScript, setActiveScript] = useState(null);
   const [progress, setProgress] = useState(null); // 取込進捗 {done,total}
   const [loadingMsg, setLoadingMsg] = useState(''); // ファイル読み込み中などの表示
+  const [query, setQuery] = useState('');          // 検索語
+  const [sort, setSort] = useState({ key: 'id', dir: 'asc' }); // 並べ替え
+
+  // 検索 + 並べ替えを適用した表示用リスト
+  const view = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = contacts;
+    if (q) {
+      list = list.filter((c) =>
+        [c.company, c.person, c.phone, c.industry].some((v) => String(v ?? '').toLowerCase().includes(q))
+      );
+    }
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      const av = a[sort.key] ?? '';
+      const bv = b[sort.key] ?? '';
+      if (sort.key === 'id') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), 'ja') * dir;
+    });
+  }, [contacts, query, sort]);
+
+  function toggleSort(key) {
+    setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+  }
+  const arrow = (key) => (sort.key === key ? <span className="arrow">{sort.dir === 'asc' ? '▲' : '▼'}</span> : null);
 
   async function load() {
     try {
@@ -134,13 +160,21 @@ export default function ContactsPage() {
         <button className="btn" onClick={() => api.exportContacts().catch((e) => setError(e.message))} disabled={contacts.length === 0}>
           エクスポート
         </button>
+        <input
+          className="searchbox"
+          type="search"
+          placeholder="会社名・担当者・番号で検索"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="">すべて</option>
+          <option value="">すべての状況</option>
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+        <span className="count">{view.length}件{query || filter ? `（全${contacts.length}件中）` : ''}</span>
         <div className="summary">
           {summary.map((s) => (
-            <span key={s.status} className="chip">{s.status}: {s.count}</span>
+            <span key={s.status} className="chip">{s.status} {s.count}</span>
           ))}
         </div>
       </div>
@@ -232,21 +266,34 @@ export default function ContactsPage() {
       <table className="grid">
         <thead>
           <tr>
-            <th>会社名</th><th>担当者</th><th>電話番号</th><th>メモ</th><th>ステータス</th><th>発信</th><th>操作</th>
+            <th className="sortable" onClick={() => toggleSort('company')}>会社名{arrow('company')}</th>
+            <th className="sortable" onClick={() => toggleSort('person')}>担当者{arrow('person')}</th>
+            <th>電話番号</th>
+            <th className="sortable" onClick={() => toggleSort('industry')}>業種{arrow('industry')}</th>
+            <th className="sortable" onClick={() => toggleSort('status')}>状況{arrow('status')}</th>
+            <th>発信</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
-          {contacts.length === 0 && (
-            <tr><td colSpan={7} className="empty">リストが空です。Excel取込か「手動追加」で登録してください。</td></tr>
+          {view.length === 0 && (
+            <tr><td colSpan={7} className="empty">
+              {contacts.length === 0
+                ? 'まだ連絡先がありません。Excelを取り込むか「手動追加」で登録してください。'
+                : '条件に合う連絡先がありません。'}
+            </td></tr>
           )}
-          {contacts.map((c) => (
+          {view.map((c) => (
             <tr key={c.id}>
               <td>{c.company || '—'}</td>
               <td>{c.person || '—'}</td>
               <td className="mono">{c.phone}</td>
-              <td>{c.memo || ''}</td>
+              <td className="truncate">{c.industry || ''}</td>
               <td>
-                <select value={c.status} onChange={(e) => changeStatus(c.id, e.target.value)}>
+                <select
+                  className={`status-select ${STATUS_CLASS[c.status] || ''}`}
+                  value={c.status}
+                  onChange={(e) => changeStatus(c.id, e.target.value)}
+                >
                   {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </td>
