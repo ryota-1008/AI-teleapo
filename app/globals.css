@@ -67,7 +67,7 @@ main { padding: 24px; }
   font-size: 14px;
 }
 .btn:hover:not(:disabled) { border-color: var(--primary); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled, .btn.disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
 .btn.small { padding: 4px 10px; font-size: 12px; margin-right: 4px; }
 .btn.danger-text { color: var(--error); }

@@ -21,6 +21,7 @@ export default function ContactsPage() {
   const [editTarget, setEditTarget] = useState(undefined); // undefined=閉/null=新規/obj=編集
   const [activeScript, setActiveScript] = useState(null);
   const [progress, setProgress] = useState(null); // 取込進捗 {done,total}
+  const [loadingMsg, setLoadingMsg] = useState(''); // ファイル読み込み中などの表示
 
   async function load() {
     try {
@@ -49,6 +50,10 @@ export default function ContactsPage() {
     if (!file) return;
     setBusy(true);
     setError('');
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    setLoadingMsg(`Excelを読み込み中…（${file.name} / ${sizeMB}MB）`);
+    // ローディング表示を先に画面へ反映してから重い解析を実行する
+    await new Promise((r) => setTimeout(r, 50));
     try {
       const XLSX = await import('xlsx');
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', raw: false });
@@ -63,6 +68,7 @@ export default function ContactsPage() {
       setError(`Excelの解析に失敗しました: ${err.message}`);
     } finally {
       setBusy(false);
+      setLoadingMsg('');
     }
   }
 
@@ -120,8 +126,8 @@ export default function ContactsPage() {
   return (
     <div className="page">
       <div className="toolbar">
-        <label className="btn primary">
-          Excel取込
+        <label className={busy ? 'btn primary disabled' : 'btn primary'}>
+          {loadingMsg ? '読み込み中…' : 'Excel取込'}
           <input type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} disabled={busy} />
         </label>
         <button className="btn" onClick={() => setEditTarget(null)}>＋ 手動追加</button>
@@ -140,6 +146,10 @@ export default function ContactsPage() {
       </div>
 
       {error && <div className="error">{error}</div>}
+
+      {loadingMsg && (
+        <div className="card info"><span className="spinner-dot" />{loadingMsg}</div>
+      )}
 
       {preview && (
         <div className="preview card">
