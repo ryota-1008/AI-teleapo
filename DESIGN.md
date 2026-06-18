@@ -1,5 +1,10 @@
 # AIテレアポツール 全体設計書(v2: ElevenLabs Agents対応版)
 
+> ⚠️ **実装の現状（2026-06時点）**: この設計書は初期構想（Express + SQLite 想定）です。
+> 実際のアプリは **Next.js 15 + Supabase(PostgreSQL/Prisma) + Vercel** に移行済みで、
+> 業種別トークの出し分けなども実装されています。最新の構成・手順は [README.md](README.md) を参照。
+> 以下は設計意図・機能要件の記録として残しています。
+
 > このドキュメントはClaude Codeに読ませて開発を進めるための設計書。
 > 「設計はAIモード込みで最初から、実装は動くものから順に」が方針。
 > v2変更点: AIモードの会話エンジンを ElevenLabs Conversational AI (Agents) に変更。
