@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/apiClient';
+import { suggestMapping, analyzeRows } from '@/lib/importMapping';
 import CallModal from '@/components/CallModal';
 import AiCallModal from '@/components/AiCallModal';
 import ContactEditModal from '@/components/ContactEditModal';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
+const CHUNK_SIZE = 500; // 1回の送信件数（Vercelの4.5MB制限を回避）
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState([]);
@@ -18,6 +20,7 @@ export default function ContactsPage() {
   const [aiContact, setAiContact] = useState(null);      // AI発信モーダル対象
   const [editTarget, setEditTarget] = useState(undefined); // undefined=閉/null=新規/obj=編集
   const [activeScript, setActiveScript] = useState(null);
+  const [progress, setProgress] = useState(null); // 取込進捗 {done,total}
 
   async function load() {
     try {
@@ -39,6 +42,7 @@ export default function ContactsPage() {
       .catch(() => setActiveScript(null));
   }, []);
 
+  // ブラウザ上でExcelを解析（大きいファイルでもサーバーに丸投げしない）
   async function onFile(e) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -46,38 +50,53 @@ export default function ContactsPage() {
     setBusy(true);
     setError('');
     try {
-      const result = await api.importExcel(file, false); // まずプレビュー
-      setPreview({ file, ...result });
+      const XLSX = await import('xlsx');
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array', raw: false });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+      if (aoa.length === 0) { setError('シートが空です'); return; }
+      const headers = (aoa[0] || []).map((h) => String(h ?? '').trim());
+      const rows = aoa.slice(1);
+      const mapping = suggestMapping(headers);
+      setPreview({ fileName: file.name, headers, rows, mapping, ...analyzeRows(rows, mapping) });
     } catch (err) {
-      setError(err.message);
+      setError(`Excelの解析に失敗しました: ${err.message}`);
     } finally {
       setBusy(false);
     }
   }
 
-  async function confirmImport() {
-    setBusy(true);
-    try {
-      await api.importExcel(preview.file, true, preview.mapping);
-      setPreview(null);
-      await load();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // 列マッピングを変更して、プレビューを再計算する
-  async function remap(field, value) {
+  // 列マッピング変更 → ブラウザ内で即再計算（サーバー往復なし）
+  function remap(field, value) {
     const idx = value === '' ? null : Number(value);
-    const newMapping = { ...preview.mapping, [field]: idx };
+    const mapping = { ...preview.mapping, [field]: idx };
+    setPreview({ ...preview, mapping, ...analyzeRows(preview.rows, mapping) });
+  }
+
+  // 確定: 正規化済みレコードを分割してサーバーへ投入
+  async function confirmImport() {
+    const records = preview.fresh;
     setBusy(true);
+    setProgress({ done: 0, total: records.length });
+    let inserted = 0;
+    let dupSkipped = 0;
     try {
-      const result = await api.importExcel(preview.file, false, newMapping);
-      setPreview({ file: preview.file, ...result });
+      for (let i = 0; i < records.length; i += CHUNK_SIZE) {
+        const chunk = records.slice(i, i + CHUNK_SIZE);
+        const r = await api.importChunk(chunk);
+        inserted += r.inserted;
+        dupSkipped += r.dupSkipped;
+        setProgress({ done: Math.min(i + CHUNK_SIZE, records.length), total: records.length });
+      }
+      setPreview(null);
+      setProgress(null);
+      setError('');
+      await load();
+      window.alert(`取込完了: ${inserted}件追加 / 既存重複 ${dupSkipped}件スキップ`);
     } catch (err) {
-      setError(err.message);
+      setError(`取込中にエラー: ${err.message}（${inserted}件まで追加済み）`);
+      setProgress(null);
+      await load();
     } finally {
       setBusy(false);
     }
@@ -141,7 +160,7 @@ export default function ContactsPage() {
                   value={preview.mapping[field] ?? ''}
                   onChange={(e) => remap(field, e.target.value)}
                   disabled={busy}
-                  className={field === 'phone' && preview.phoneMissing ? 'map-missing' : ''}
+                  className={field === 'phone' && preview.mapping.phone == null ? 'map-missing' : ''}
                 >
                   <option value="">（なし）</option>
                   {preview.headers.map((h, i) => (
@@ -152,42 +171,47 @@ export default function ContactsPage() {
             ))}
           </div>
 
-          {/* サンプル表示(先頭数行) */}
-          {preview.sampleData?.length > 0 && (
+          {/* サンプル表示(先頭5行) */}
+          {preview.rows.length > 0 && (
             <div className="sample-wrap">
               <table className="sample-table">
                 <thead>
                   <tr>{preview.headers.map((h, i) => <th key={i}>{h || `列${i + 1}`}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {preview.sampleData.map((r, ri) => (
-                    <tr key={ri}>{r.map((c, ci) => <td key={ci}>{c}</td>)}</tr>
+                  {preview.rows.slice(0, 5).map((r, ri) => (
+                    <tr key={ri}>{preview.headers.map((_, ci) => <td key={ci}>{String(r[ci] ?? '')}</td>)}</tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
 
-          {preview.phoneMissing && <div className="error">電話番号の列を選んでください（必須）。</div>}
+          {preview.mapping.phone == null && <div className="error">電話番号の列を選んでください（必須）。</div>}
 
           <p>
-            取込 <b>{preview.validCount}</b> 件
+            取込予定 <b>{preview.validCount}</b> 件
             {preview.noPhoneCount > 0 && <> / 電話なし <b className="warn">{preview.noPhoneCount}</b> 件</>}
-            {preview.duplicateCount > 0 && <> / 重複スキップ <b className="warn">{preview.duplicateCount}</b> 件</>}
+            {preview.withinDupCount > 0 && <> / ファイル内重複 <b className="warn">{preview.withinDupCount}</b> 件</>}
             {preview.invalidCount > 0 && <> / 無効 <b className="warn">{preview.invalidCount}</b> 件</>}
           </p>
           {preview.invalidCount > 0 && (
             <details>
-              <summary>無効な行を確認 ({preview.invalidCount})</summary>
+              <summary>無効な行を確認 (先頭{preview.invalidSample.length}件)</summary>
               <ul className="invalid-list">
-                {preview.invalid.map((r, i) => (
+                {preview.invalidSample.map((r, i) => (
                   <li key={i}>{r.company || '—'} / {r.person || '—'} / 「{r.rawPhone}」→ {r.reason}</li>
                 ))}
               </ul>
             </details>
           )}
+
+          {progress && (
+            <p className="muted">取込中… {progress.done} / {progress.total} 件</p>
+          )}
+
           <div className="row">
-            <button className="btn primary" onClick={confirmImport} disabled={busy || preview.phoneMissing || preview.validCount === 0}>
+            <button className="btn primary" onClick={confirmImport} disabled={busy || preview.mapping.phone == null || preview.validCount === 0}>
               {preview.validCount} 件を取り込む
             </button>
             <button className="btn" onClick={() => setPreview(null)} disabled={busy}>キャンセル</button>
