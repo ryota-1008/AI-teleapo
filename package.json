@@ -4,6 +4,7 @@
   "private": true,
   "description": "AIテレアポツール (Next.js + Supabase/Prisma)",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "next dev -p 4000",
     "build": "prisma generate && next build",
     "start": "next start -p 4000",
