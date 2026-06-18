@@ -9,6 +9,7 @@ export default function ContactEditModal({ contact, onClose, onSaved }) {
     company: contact?.company || '',
     person: contact?.person || '',
     phone: contact?.phone || '',
+    industry: contact?.industry || '',
     memo: contact?.memo || '',
   });
   const [saving, setSaving] = useState(false);
@@ -49,6 +50,9 @@ export default function ContactEditModal({ contact, onClose, onSaved }) {
         </label>
         <label className="field"><span>電話番号（必須・自動で+81形式に整形）</span>
           <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="03-1234-5678 / 090-xxxx-xxxx" />
+        </label>
+        <label className="field"><span>業種（AI発信のトーク出し分けに使用）</span>
+          <input value={form.industry} onChange={(e) => set('industry', e.target.value)} placeholder="例: 製造業 / 学術・開発研究機関" />
         </label>
         <label className="field"><span>メモ</span>
           <textarea rows={2} value={form.memo} onChange={(e) => set('memo', e.target.value)} />

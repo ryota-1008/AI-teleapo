@@ -132,6 +132,7 @@ export default function ContactsPage() {
               ['company', '会社名'],
               ['person', '担当者'],
               ['phone', '電話番号 *'],
+              ['industry', '業種'],
               ['memo', 'メモ'],
             ].map(([field, label]) => (
               <label key={field} className="map-field">

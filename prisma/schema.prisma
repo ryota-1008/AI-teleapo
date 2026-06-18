@@ -17,12 +17,24 @@ model Contact {
   person     String?
   phone      String // E.164形式(+81...)に正規化して保存
   memo       String?
+  industry   String? // 業種（業種別トークの出し分けに使う）
   status     String    @default("未架電") // 未架電/不在/アポ獲得/NG/再架電
   nextCallAt DateTime? @map("next_call_at")
   createdAt  DateTime  @default(now()) @map("created_at")
   calls      Call[]
 
   @@map("contacts")
+}
+
+// 業種別トーク: 業種文字列に keyword が含まれたら pitch を採用する
+model IndustryPitch {
+  id        Int     @id @default(autoincrement())
+  keyword   String // 業種に含まれていたら一致とみなす語（例: 製造, 学術, 小売）
+  pitch     String // その業種向けのトーク/提案
+  isDefault Boolean @default(false) @map("is_default") // 該当なし時に使う既定トーク
+  sortOrder Int     @default(0) @map("sort_order")
+
+  @@map("industry_pitches")
 }
 
 model Call {

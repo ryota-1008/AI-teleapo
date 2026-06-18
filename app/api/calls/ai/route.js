@@ -1,4 +1,4 @@
-import { callsRepo, contactsRepo } from '@/lib/db';
+import { callsRepo, contactsRepo, industryPitchesRepo } from '@/lib/db';
 import { isElevenLabsConfigured, startAiCall } from '@/lib/elevenlabs';
 import { outboundGuard } from '@/lib/guard';
 
@@ -18,7 +18,12 @@ export async function POST(request) {
   }
 
   try {
-    const data = await startAiCall(contact);
+    // 業種に合わせたトークを解決して動的変数で渡す
+    const matched = await industryPitchesRepo.match(contact.industry);
+    const data = await startAiCall(contact, {
+      industry: contact.industry || '',
+      industry_pitch: matched?.pitch || '',
+    });
     const call = await callsRepo.insert({
       contact_id: contact.id,
       mode: 'ai',

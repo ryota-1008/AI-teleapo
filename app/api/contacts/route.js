@@ -16,6 +16,6 @@ export async function POST(request) {
   if (existing.includes(n.e164)) {
     return Response.json({ error: 'この電話番号は既に登録されています' }, { status: 409 });
   }
-  const c = await contactsRepo.create({ company: body.company, person: body.person, phone: n.e164, memo: body.memo });
+  const c = await contactsRepo.create({ company: body.company, person: body.person, phone: n.e164, memo: body.memo, industry: body.industry });
   return Response.json(c, { status: 201 });
 }

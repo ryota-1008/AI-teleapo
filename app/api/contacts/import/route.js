@@ -7,6 +7,7 @@ const COLUMN_ALIASES = {
   company: ['会社名', '会社', '企業名', '法人名称', '法人名', '法人', '団体名', '組織名', '名称', 'company'],
   person: ['担当者名', '担当者', '担当', '氏名', '名前', '代表者名', '代表者', '代表', 'person', 'name'],
   phone: ['電話番号', '電話', 'tel', 'phone', 'phone_number'],
+  industry: ['業種', '業種(中分類1)', '業種(中分類)', '業界', 'industry'],
   memo: ['メモ', '備考', '法人サマリー', 'サマリー', '概要', 'note', 'memo'],
 };
 
@@ -28,7 +29,7 @@ function parseSheet(buffer) {
 }
 
 function suggestMapping(headers) {
-  const mapping = { company: null, person: null, phone: null, memo: null };
+  const mapping = { company: null, person: null, phone: null, industry: null, memo: null };
   headers.forEach((h, idx) => {
     const key = detectKey(h);
     if (key && mapping[key] === null) mapping[key] = idx;
@@ -48,6 +49,7 @@ function applyMapping(rows, mapping) {
     company: at(r, mapping.company),
     person: at(r, mapping.person),
     phone: at(r, mapping.phone),
+    industry: at(r, mapping.industry),
     memo: at(r, mapping.memo),
   }));
 }
@@ -87,7 +89,7 @@ export async function POST(request) {
     const phoneRaw = String(row.phone ?? '').trim();
     if (!phoneRaw) { noPhone++; continue; }
     const n = normalizePhone(phoneRaw);
-    if (n.ok) valid.push({ company: row.company || null, person: row.person || null, phone: n.e164, memo: row.memo || null });
+    if (n.ok) valid.push({ company: row.company || null, person: row.person || null, phone: n.e164, industry: row.industry || null, memo: row.memo || null });
     else invalid.push({ company: row.company || null, person: row.person || null, rawPhone: n.raw, reason: n.reason });
   }
 
