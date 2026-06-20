@@ -8,6 +8,7 @@ import ContactEditModal from '@/components/ContactEditModal';
 
 const STATUSES = ['未架電', '不在', 'アポ獲得', 'NG', '再架電'];
 const STATUS_CLASS = { '未架電': 's-new', '不在': 's-absent', 'アポ獲得': 's-won', NG: 's-ng', '再架電': 's-recall' };
+const STATUS_DOT = { '未架電': '#515b69', '不在': '#8a5a06', 'アポ獲得': '#1c6b41', NG: '#a83a2e', '再架電': '#285f9e' };
 const CHUNK_SIZE = 500; // 1回の送信件数（Vercelの4.5MB制限を回避）
 
 export default function ContactsPage() {
@@ -149,8 +150,24 @@ export default function ContactsPage() {
     }
   }
 
+  const statusCount = Object.fromEntries(summary.map((s) => [s.status, s.count]));
+  const total = summary.reduce((n, s) => n + s.count, 0);
+
   return (
     <div className="page">
+      <div className="stats">
+        <div className="stat">
+          <div className="label">総数</div>
+          <div className="value">{total}</div>
+        </div>
+        {STATUSES.map((s) => (
+          <div className="stat" key={s}>
+            <div className="label"><span className="dot" style={{ background: STATUS_DOT[s] }} />{s}</div>
+            <div className="value">{statusCount[s] || 0}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="toolbar">
         <label className={busy ? 'btn primary disabled' : 'btn primary'}>
           {loadingMsg ? '読み込み中…' : 'Excel取込'}
@@ -172,11 +189,6 @@ export default function ContactsPage() {
           {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         <span className="count">{view.length}件{query || filter ? `（全${contacts.length}件中）` : ''}</span>
-        <div className="summary">
-          {summary.map((s) => (
-            <span key={s.status} className="chip">{s.status} {s.count}</span>
-          ))}
-        </div>
       </div>
 
       {error && <div className="error">{error}</div>}
